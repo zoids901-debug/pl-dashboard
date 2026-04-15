@@ -1,4 +1,11 @@
 {
+  "meta": {
+    "updated": "2026-04-15",
+    "updated_label": "2026년 4월 15일",
+    "latest_year": "2026",
+    "latest_month": "2월",
+    "range_label": "2025년 1월~12월 · 2026년 1월~2월"
+  },
   "months": {
     "2025": [
       "1월",
