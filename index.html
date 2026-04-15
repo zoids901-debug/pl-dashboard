@@ -270,8 +270,8 @@
     <div class="sub">통합 월별 손익계산서 · 단위: 백만원, VAT 제외</div>
   </div>
   <div class="header-right">
-    <div>2025 전체(1~12월) · 2026 (1~2월)</div>
-    <div>연도·브랜드·월·매장 복수 선택 가능</div>
+    <div id="hdr-range">데이터 로딩 중...</div>
+    <div id="hdr-updated" style="opacity:.5"></div>
   </div>
 </div>
 
@@ -1354,6 +1354,12 @@ function updateAll() { updateKPI(); updateKPI2(); updateTrend(); updateStoreChar
       ALL_CONS    = d.consolidated  || {};
       ALL_STORES  = d.stores        || {};
       ALL_SGA_SUB = d.sga_sub       || {};
+      // 헤더 메타 표시
+      const meta = d.meta || {};
+      const rangeEl   = document.getElementById('hdr-range');
+      const updatedEl = document.getElementById('hdr-updated');
+      if (rangeEl)   rangeEl.textContent   = meta.range_label   || '';
+      if (updatedEl) updatedEl.textContent = meta.updated_label ? `최종 업데이트: ${meta.updated_label}` : '';
       if (overlay) overlay.remove();
       syncCY();
       buildMonthChecks();
