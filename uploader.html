@@ -208,11 +208,25 @@ function detectMonths(ws, colFn, yr) {
 // ═══════════════════════════════════════════════════
 // 통합 시트 파싱
 // ═══════════════════════════════════════════════════
+// 인건비/에너지/기타비용은 통합 시트에 합계 행이 없고 세부 항목만 있어서 직접 합산
+const SGA_DETAIL = {
+  인건비:   ['직원급상여','잡급(사업소득)','퇴직급여','복리후생비'],
+  에너지:   ['전력비','수도광열비','가스비'],
+  기타비용: ['여비교통비','접대비','통신비','세금과공과','보험료','수선비',
+             '차량유지비','도서인쇄비','광고선전비','소모품비','운반비',
+             '교육훈련비','무형자산고정상각'],
+};
+
 function parseConsSheet(ws, n) {
   const lm = buildLabelMap(ws);
   const get = (label, m) => {
     const r = lm[label]; if (r == null) return 0;
     return cellVal(ws, r, consCol(m));
+  };
+  // 합계 행이 있으면 그 값, 없으면 세부 항목 합산
+  const getCat = (cat, m) => {
+    if (lm[cat] != null) return get(cat, m);
+    return (SGA_DETAIL[cat] || []).reduce((s,lbl)=>s + get(lbl,m), 0);
   };
   const result = {};
   for (let m = 1; m <= n; m++) {
@@ -223,7 +237,7 @@ function parseConsSheet(ws, n) {
       매출총이익:  get('매출총이익',m),
       판관비:      get('판매관리비',m) || get('판관비',m),
       영업이익:    get('영업이익',m),
-      EBITDA:      get('EBITDA',m),
+      EBITDA:      get('EBITDA',m) || get('영업현금흐름(EBITDA)',m),
       당기순이익:  get('당기순이익',m),
       매출세부: lm['상품매출'] != null ? {
         상품매출: get('상품매출',m), 티켓매출: get('티켓매출',m),
@@ -231,10 +245,10 @@ function parseConsSheet(ws, n) {
         기타매출: get('기타매출',m),
       } : null,
       판관비세부: {
-        인건비:    get('인건비',m),    감가상각비: get('감가상각비',m),
-        지급임차료: get('지급임차료',m), 에너지:    get('에너지',m),
+        인건비:    getCat('인건비',m),  감가상각비: get('감가상각비',m),
+        지급임차료: get('지급임차료',m), 에너지:    getCat('에너지',m),
         지급수수료: get('지급수수료',m), 건물관리비: get('건물관리비',m),
-        외주용역비: get('외주용역비',m), 기타비용:  get('기타비용',m),
+        외주용역비: get('외주용역비',m), 기타비용:  getCat('기타비용',m),
       },
     };
   }
@@ -296,7 +310,8 @@ function parseStoreSheet(ws, n, brand, colFn) {
     months[mk] = {
       rev, cost: get('매출원가',m), gp: get('매출총이익',m),
       sga: get('판매관리비',m)||get('판관비',m),
-      op: get('영업이익',m), net: get('당기순이익',m), ebitda: get('EBITDA',m),
+      op: get('영업이익',m), net: get('당기순이익',m),
+      ebitda: get('EBITDA',m) || get('영업현금흐름(EBITDA)',m),
       sga_sub: sgaSub,
       rev_sub: Object.keys(revSub).length ? revSub : null,
     };
