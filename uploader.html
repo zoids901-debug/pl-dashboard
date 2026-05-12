@@ -235,7 +235,7 @@ function parseConsSheet(ws, n) {
       매출:        get('매출',m)   || get('총매출',m),
       원가:        get('매출원가',m),
       매출총이익:  get('매출총이익',m),
-      판관비:      get('판매관리비',m) || get('판관비',m),
+      판관비:      get('판관비 계',m) || get('판매관리비',m) || get('판관비',m),
       영업이익:    get('영업이익',m),
       EBITDA:      get('EBITDA',m) || get('영업현금흐름(EBITDA)',m),
       당기순이익:  get('당기순이익',m),
@@ -309,7 +309,7 @@ function parseStoreSheet(ws, n, brand, colFn) {
 
     months[mk] = {
       rev, cost: get('매출원가',m), gp: get('매출총이익',m),
-      sga: get('판매관리비',m)||get('판관비',m),
+      sga: get('판관비 계',m)||get('판매관리비',m)||get('판관비',m),
       op: get('영업이익',m), net: get('당기순이익',m),
       ebitda: get('EBITDA',m) || get('영업현금흐름(EBITDA)',m),
       sga_sub: sgaSub,
