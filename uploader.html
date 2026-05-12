@@ -584,6 +584,32 @@ const GH = {
   branch: 'main',
 };
 
+// 연도 단위 병합: existing 에 fresh 의 각 연도를 덮어쓰고, fresh 에 없는 연도는 그대로 둠
+function mergeByYear(existing, fresh) {
+  const out = JSON.parse(JSON.stringify(existing || {}));
+  for (const key of ['months', 'consolidated', 'stores', 'sga_sub']) {
+    out[key] = out[key] || {};
+    for (const yr of Object.keys((fresh && fresh[key]) || {})) out[key][yr] = fresh[key][yr];
+    out[key] = Object.fromEntries(Object.keys(out[key]).sort().map(y => [y, out[key][y]]));
+  }
+  const years = Object.keys(out.months);
+  const parts = years.map(yr => {
+    const ms = out.months[yr] || [];
+    if (!ms.length) return `${yr}년`;
+    if (ms.length === 1) return `${yr}년 ${ms[0]}`;
+    return `${yr}년 ${ms[0]}~${ms[ms.length - 1]}`;
+  });
+  const now = new Date();
+  out.meta = Object.assign({}, existing.meta, fresh.meta, {
+    range_label: parts.join(' · '),
+    latest_year: fresh.meta.latest_year,
+    latest_month: fresh.meta.latest_month,
+    updated: now.toISOString().slice(0, 10),
+    updated_label: `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`,
+  });
+  return out;
+}
+
 async function runUpload() {
   if (!parsedData) return;
   const { token, owner, repo, branch } = GH;
@@ -600,9 +626,25 @@ async function runUpload() {
   log('══════════════════════════════', 'head');
 
   try {
-    const jsonStr = JSON.stringify(parsedData, null, 2);
+    // 기존 data.json 을 받아 "연도 단위"로 병합 — 업로드한 엑셀에 없는 연도는 보존
+    let toUpload = parsedData;
+    try {
+      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/data.json?ref=${branch}`,
+        { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' } });
+      if (r.ok) {
+        const j = await r.json();
+        const existing = JSON.parse(decodeURIComponent(escape(atob(String(j.content || '').replace(/\n/g, '')))));
+        toUpload = mergeByYear(existing, parsedData);
+        const keptYears = Object.keys(toUpload.months).filter(y => !(parsedData.months || {})[y]);
+        if (keptYears.length) log(`   기존 연도 보존: ${keptYears.join(', ')}`, 'sub');
+      }
+    } catch (me) {
+      log('   ⚠ 기존 data.json 병합 실패 — 새 데이터로 전체 교체: ' + me.message, 'warn');
+      toUpload = parsedData;
+    }
+    const jsonStr = JSON.stringify(toUpload, null, 2);
     const content = btoa(unescape(encodeURIComponent(jsonStr)));
-    const msg = `손익 데이터 업데이트 (${parsedData.meta.range_label})`;
+    const msg = `손익 데이터 업데이트 (${toUpload.meta.range_label})`;
 
     await ghUploadFile(token, owner, repo, branch, 'data.json', content, msg);
 
