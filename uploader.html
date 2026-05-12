@@ -285,6 +285,13 @@ function parseStoreSheet(ws, n, brand, colFn) {
     for (const lbl of ['상품매출','배달매출','티켓매출','도서매출','기타매출']) {
       const v=get(lbl,m); if(v) revSub[lbl]=v;
     }
+    // 변형 라벨(상품매출(음식)·상품매출(매점) 등)도 상품매출으로 합산 — 테이블린/극장 시트 대응
+    for (const lbl of Object.keys(lm)) {
+      if (/^상품매출\s*\(/.test(lbl)) {
+        const v = cellVal(ws, lm[lbl], colFn(m));
+        if (v) revSub['상품매출'] = (revSub['상품매출']||0) + v;
+      }
+    }
 
     months[mk] = {
       rev, cost: get('매출원가',m), gp: get('매출총이익',m),
